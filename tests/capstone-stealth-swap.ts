@@ -31,7 +31,6 @@ describe("onchain", () => {
   let userOutputTokenAccount: PublicKey;
 
   before(async () => {
-    // Airdrop SOL to user
     const airdropSignature = await connection.requestAirdrop(
       user.publicKey,
       anchor.web3.LAMPORTS_PER_SOL
@@ -45,7 +44,6 @@ describe("onchain", () => {
     console.log("User address:", user.publicKey.toBase58());
     console.log("SOL airdrop successful!:",await connection.getBalance(user.publicKey));
 
-    // Airdrop SOL to solver
 const solverAirdropSig = await connection.requestAirdrop(
   solver.publicKey,
   anchor.web3.LAMPORTS_PER_SOL
@@ -60,51 +58,48 @@ console.log("Solver address:", solver.publicKey.toBase58());
 console.log("SOL airdrop successful!:", await connection.getBalance(solver.publicKey));
 
 
-    // Create the input token mint
     inputTokenMint = await createMint(
       connection,
       user,
-      user.publicKey,  // mint authority
-      user.publicKey,  // freeze authority
-      9,              // decimals
-      inputToken,     // mint keypair
+      user.publicKey, 
+      user.publicKey,  
+      9,              
+      inputToken,   
       undefined,
       TOKEN_PROGRAM_ID
     );
     console.log("Input token mint created successfully:", inputTokenMint.toString());
 
-    // Create associated token account for user
     userTokenAccount = await createAssociatedTokenAccount(
       connection,
       user,
-      inputTokenMint,  // mint address, not user.publicKey
-      user.publicKey,  // owner
+      inputTokenMint, 
+      user.publicKey, 
       undefined,
       TOKEN_PROGRAM_ID
     );
     console.log("User token account created successfully:", userTokenAccount.toString());
-    // Mint some tokens to user's account
+
     await mintTo(
       connection,
       user,
       inputTokenMint,
       userTokenAccount,
-      user.publicKey,  // mint authority
-      1000000000,     // amount (1000 tokens with 9 decimals)
+      user.publicKey,  
+      1000000000,     
       [],
       undefined,
       TOKEN_PROGRAM_ID
     );
     console.log("User token account mint successful:", userTokenAccount.toString());
 
-    // Create the output token mint
     outputTokenMint = await createMint(
       connection,
       user,
-      user.publicKey,  // mint authority
-      user.publicKey,  // freeze authority
-      9,              // decimals
-      outputToken,     // mint keypair
+      user.publicKey, 
+      user.publicKey, 
+      9,              
+      outputToken,   
       undefined,
       TOKEN_PROGRAM_ID
     );
@@ -115,14 +110,13 @@ console.log("SOL airdrop successful!:", await connection.getBalance(solver.publi
      userOutputTokenAccount = await createAssociatedTokenAccount(
       connection,
       user,
-      outputTokenMint,  // mint address, not user.publicKey
-      user.publicKey,  // owner
+      outputTokenMint,
+      user.publicKey,  
       undefined,
       TOKEN_PROGRAM_ID
     );
     console.log("User output token account created successfully:", userOutputTokenAccount.toString());
     
-        // Get the solver's output token account (where they have the tokens to give)
      solverOutputTokenAccount = await createAssociatedTokenAccount(
       connection,
       solver,
@@ -145,16 +139,6 @@ console.log("SOL airdrop successful!:", await connection.getBalance(solver.publi
       TOKEN_PROGRAM_ID
     );
     console.log("Solver output tokens minted");
-
-    // const userOutputTokenAccount = await createAssociatedTokenAccount(
-    //   connection,
-    //   user,
-    //   outputTokenMint,
-    //   user.publicKey,
-    //   undefined,
-    //   TOKEN_PROGRAM_ID
-    // );
-    // console.log("User output token account created successfully:", userOutputTokenAccount.toString());
 
      solverInputTokenAccount = await createAssociatedTokenAccount(
       connection,
@@ -180,7 +164,6 @@ console.log("Amount:", ataInfo.amount.toString());
       [ 
         Buffer.from("intent"), 
         user.publicKey.toBuffer(), 
-        // Buffer.from(new BN(id).toArray("le", 8))  // Include the id in seeds
       ],
       program.programId
     );
@@ -189,14 +172,12 @@ console.log("Amount:", ataInfo.amount.toString());
     const [escrow, escrowBump] = await PublicKey.findProgramAddressSync(
       [ 
         Buffer.from("escrow"), 
-        user.publicKey.toBuffer(),           // Use intent key, not user key
-        // inputTokenMint.toBuffer()    // Use mint address, not inputToken keypair
+        user.publicKey.toBuffer(),         
       ],
       program.programId
     );
   console.log("Escrow address:", escrow.toString());
 
-  // Ensure these two are the same public key
 console.log("Mint in user token account:", (await getAccount(connection, userTokenAccount)).mint.toString());
 console.log("inputTokenMint:", inputTokenMint.toString());
     try {
@@ -235,82 +216,79 @@ console.log("inputTokenMint:", inputTokenMint.toString());
   });
 
   it("Fill Intent", async () => {
-    const [intent, bump] = await PublicKey.findProgramAddressSync(
-      [ 
-        Buffer.from("intent"), 
-        user.publicKey.toBuffer(), 
-      ],
-      program.programId
-    );
-    console.log("Intent address:", intent.toString());
+  const [intent, bump] = await PublicKey.findProgramAddressSync(
+    [ 
+      Buffer.from("intent"), 
+      user.publicKey.toBuffer(), 
+    ],
+    program.programId
+  );
+  console.log("Intent address:", intent.toString());
+  
+  const [escrow, escrowBump] = await PublicKey.findProgramAddressSync(
+    [ 
+      Buffer.from("escrow"), 
+      user.publicKey.toBuffer(),
+    ],
+    program.programId
+  );
+  console.log("User escrow address:", escrow.toString());
+
+  const [solverOutputEscrow, solverOutputEscrowBump] = await PublicKey.findProgramAddressSync(
+    [ 
+      Buffer.from("solver_escrow"), 
+      solver.publicKey.toBuffer(),
+      outputTokenMint.toBuffer()
+    ],
+    program.programId
+  );
+  console.log("Solver output escrow address:", solverOutputEscrow.toString());
+
+  try {
+    console.log("Filling intent...");
+    await program.methods.fillIntent(
+      {
+        id: new BN(id),
+        inputAmount: new BN(10),
+        minReceive: new BN(5),
+        receiveAmount: new BN(5),
+        inputToken: inputTokenMint,
+        outputToken: outputTokenMint,
+        user: user.publicKey,
+      })
+      .accounts({
+        solver: solver.publicKey,
+        user: user.publicKey,
+        intent: intent,
+      
+        solverOutputAta: solverOutputTokenAccount,
+        userInputEscrow: escrow,
+       
+        inputTokenMint: inputTokenMint,
+        outputTokenMint: outputTokenMint,
+      })
+      .signers([solver, user])
+      .rpc();
+      
+    console.log("Intent filled successfully!");
     
-    const [escrow, escrowBump] = await PublicKey.findProgramAddressSync(
-      [ 
-        Buffer.from("escrow"), 
-        user.publicKey.toBuffer(),
-      ],
-      program.programId
-    );
-    console.log("Escrow address:", escrow.toString());
+    const intentAccount = await program.account.intent.fetch(intent);
+    console.log("Intent account:", intentAccount);
 
-    const [solverOutputEscrow, solverOutputEscrowBump] = await PublicKey.findProgramAddressSync(
-      [ 
-        Buffer.from("escrow"), 
-        solver.publicKey.toBuffer(),
-      ],
-      program.programId
-    );
-    console.log("Solver escrow address:", solverOutputEscrow.toString());
-
-
-    try {
-      console.log("Filling intent...");
-      await program.methods.fillIntent(
-        {
-          id: new BN(id),
-          inputAmount: new BN(10),
-          minReceive: new BN(5),
-          receiveAmount: new BN(5),
-          inputToken: inputTokenMint,
-          outputToken: outputTokenMint, // Use outputTokenMint instead of outputToken.publicKey
-          user: user.publicKey,
-        })
-        .accounts({
-          solver: solver.publicKey,
-          // user: user.publicKey, // Add the user account
-          intent: intent,
-          // userReceiveAta: userOutputTokenAccount, // User's output token account
-          // solverReceiveAta: solverInputTokenAccount, // Solver's input token account  
-          solverOutputAta: solverOutputTokenAccount, // ADDED: Solver's output token account
-          userInputEscrow: escrow,
-          // solverOutputEscrow: solverOutputEscrow,
-          inputTokenMint: inputTokenMint,
-          outputTokenMint: outputTokenMint,
-     
-        })
-        .signers([ solver]) // Sign with both solver and user
-        .rpc();
-        
-      console.log("Intent filled successfully! Tx:");
+    assert.equal(intentAccount.active, false);
       
-      const intentAccount = await program.account.intent.fetch(intent);
-      console.log("Intent account:", intentAccount);
+    const userOutputBalance = await connection.getTokenAccountBalance(userOutputTokenAccount);
+    const solverInputBalance = await connection.getTokenAccountBalance(solverInputTokenAccount);
+    
+    console.log("User received:", userOutputBalance.value.amount, "output tokens");
+    console.log("Solver received:", solverInputBalance.value.amount, "input tokens");
 
-      assert.equal(intentAccount.active, false);
-        
-      // Verify balances
-      const userOutputBalance = await connection.getTokenAccountBalance(userOutputTokenAccount);
-      const solverInputBalance = await connection.getTokenAccountBalance(solverInputTokenAccount);
-      
-      console.log("User received:", userOutputBalance.value.amount, "output tokens");
-      console.log("Solver received:", solverInputBalance.value.amount, "input tokens");
+    assert.equal(userOutputBalance.value.amount, "5");
+    assert.equal(solverInputBalance.value.amount, "10");
 
-      assert.equal(userOutputBalance.value.amount, "5");
-      assert.equal(solverInputBalance.value.amount, "10");
-
-    } catch (e) {
-      console.error("Error filling intent:", e);
-      throw e;
-    }
-  });
+  } catch (e) {
+    console.error("Error filling intent:", e);
+    throw e;
+  }
+});
 });
