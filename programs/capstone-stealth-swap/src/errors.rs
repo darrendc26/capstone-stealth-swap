@@ -25,4 +25,12 @@ pub enum ErrorCode {
 
     #[msg("Insufficient balance")]  
     InsufficientBalance,
+    #[msg("Insufficient user escrow")]
+    InsufficientUserEscrow,
+
+    #[msg("Insufficient solver balance")]
+    InsufficientSolverBalance,
+
+    #[msg("Invalid account data")]  
+    InvalidAccountData,
 }
