@@ -215,6 +215,62 @@ console.log("inputTokenMint:", inputTokenMint.toString());
     }
   });
 
+  it("Create Auction", async () => {
+    const [intent, bump] = await PublicKey.findProgramAddressSync(
+      [ 
+        Buffer.from("intent"), 
+        user.publicKey.toBuffer(), 
+      ],
+      program.programId
+    );
+    const [auction, _] = await PublicKey.findProgramAddressSync(
+      [ 
+        Buffer.from("auction"), 
+        intent.toBuffer(),
+      ],
+      program.programId
+    );
+    console.log("Auction address:", auction.toString());
+
+    try {
+      console.log("Creating auction...");
+      await program.methods.createAuction()
+        .accounts({
+          user: user.publicKey,
+          // auction: auction,
+          intent: intent,
+        })
+        .signers([user])
+        .rpc();
+
+      const auctionAccount = await program.account.auctionAccount.fetch(auction);
+      console.log("Auction created successfully:", auctionAccount);
+
+      let now = Math.floor(Date.now() / 1000);
+      let TOLERANCE = 2; // Using tolerance of 2 seconds to account for clock drift
+      assert.equal(auctionAccount.intent.toString(), intent.toString());
+      assert.equal(auctionAccount.startQuote.toString(), new BN(5).toString());
+      assert.equal(auctionAccount.minQuote.toString(), new BN(5).toString());
+      assert(
+      Math.abs(auctionAccount.startTime.toNumber() - now) <= TOLERANCE,
+      `startTime ${auctionAccount.startTime.toNumber()} not within ${TOLERANCE}s of ${now}`
+      );
+      assert(
+      Math.abs(auctionAccount.endTime.toNumber() - (now + 120)) <= TOLERANCE,
+      `endTime ${auctionAccount.endTime.toNumber()} not within ${TOLERANCE}s of ${now + 120}`
+     );
+      assert.equal(auctionAccount.exclusiveWindowSecs.toString(), new BN(30).toString());
+      assert.equal(auctionAccount.bondAmount.toString(), new BN(1000000).toString());
+      assert.equal(auctionAccount.claimedBy, null);
+      assert.equal(auctionAccount.claimPrice, null);
+      assert.equal(auctionAccount.claimExpiry, null);
+      assert(auctionAccount.status.started !== undefined);      
+    } catch (e) {
+      console.error("Error creating auction:", e);
+      throw e;
+    } 
+  }); 
+
   it("Fill Intent", async () => {
   const [intent, bump] = await PublicKey.findProgramAddressSync(
     [ 

@@ -48,7 +48,7 @@ pub fn create_auction_handler(ctx: Context<CreateAuction>) -> Result<()> {
     auction.claimed_by = None;
     auction.claim_price = None;
     auction.claim_expiry = None;
-    auction.status = AuctionStatus::Ended; 
+    auction.status = AuctionStatus::Started; 
     
     Ok(())
 }

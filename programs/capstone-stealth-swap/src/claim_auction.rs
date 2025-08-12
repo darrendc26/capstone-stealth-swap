@@ -27,7 +27,6 @@ pub struct ClaimAuction<'info> {
     )]
     pub auction: Account<'info, AuctionAccount>,
 
-    /// CHECK: Bond vault PDA for holding lamports
     #[account(
         mut,
         seeds = [b"bond_vault"],
@@ -42,15 +41,12 @@ pub fn handler(ctx: Context<ClaimAuction>) -> Result<()> {
     let auction = &mut ctx.accounts.auction;
     let now = Clock::get()?.unix_timestamp;
 
-    // Validate timing
     require!(now >= auction.start_time, ErrorCode::AuctionNotStarted);
     require!(now <= auction.end_time, ErrorCode::AuctionExpired);
 
-    // Calculate current Dutch price and validate it's profitable
     let price_at_claim = current_price(auction, now);
     require!(price_at_claim >= auction.min_quote, ErrorCode::PriceBelowMinimum);
 
-    // Transfer bond from solver to bond vault (anti-griefing mechanism)
     let bond_transfer = system_program::Transfer {
         from: ctx.accounts.solver.to_account_info(),
         to: ctx.accounts.bond_vault.to_account_info(),
@@ -64,12 +60,10 @@ pub fn handler(ctx: Context<ClaimAuction>) -> Result<()> {
         auction.bond_amount,
     )?;
 
-    // Award exclusive rights to solver
     auction.claimed_by = Some(ctx.accounts.solver.key());
     auction.claim_expiry = Some(now + auction.exclusive_window_secs);
-    auction.claim_price = Some(price_at_claim); // Lock the price!
-    auction.status = AuctionStatus::Awarded; // Key change: give exclusive rights
-
+    auction.claim_price = Some(price_at_claim);
+    auction.status = AuctionStatus::Awarded; 
     emit!(AuctionClaimed {
         intent: ctx.accounts.intent.key(),
         auction: auction.key(),
@@ -80,8 +74,6 @@ pub fn handler(ctx: Context<ClaimAuction>) -> Result<()> {
 
     Ok(())
 }
-
-// Add this Dutch price calculation helper
 pub fn current_price(auction: &AuctionAccount, current_time: i64) -> u64 {
     if current_time <= auction.start_time {
         return auction.start_quote;
@@ -91,12 +83,10 @@ pub fn current_price(auction: &AuctionAccount, current_time: i64) -> u64 {
         return auction.min_quote;
     }
     
-    // Linear decay: price reduces over time from start_quote to min_quote
     let elapsed = current_time - auction.start_time;
     let total_duration = auction.end_time - auction.start_time;
     let price_range = auction.start_quote - auction.min_quote;
     
-    // Use u128 to prevent overflow during multiplication
     let decay = (price_range as u128 * elapsed as u128) / total_duration as u128;
     let current = auction.start_quote - decay as u64;
     
