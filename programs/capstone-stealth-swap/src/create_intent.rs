@@ -54,7 +54,7 @@ pub struct CreateIntentArgs {
     pub min_receive: u64,
 }
 
-pub fn handler(ctx: Context<CreateIntent>, args: CreateIntentArgs, id: u64) -> Result<()> {
+pub fn create_intent_handler(ctx: Context<CreateIntent>, args: CreateIntentArgs, id: u64) -> Result<()> {
     // Validate user has sufficient balance
     require!(
         ctx.accounts.user_token_account.amount >= args.input_amount,

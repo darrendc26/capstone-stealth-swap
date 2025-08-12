@@ -33,4 +33,20 @@ pub enum ErrorCode {
 
     #[msg("Invalid account data")]  
     InvalidAccountData,
+    #[msg("Invalid input amount")]
+    InvalidInputAmount,
+    #[msg("Invalid min receive")]
+    InvalidMinReceive,
+    #[msg("Math overflow")]  
+    MathOverflow,
+    #[msg("Auction not started")]
+    AuctionNotStarted,
+    #[msg("Auction expired")]
+    AuctionExpired,
+    #[msg("Auction already claimed")]
+    AuctionAlreadyClaimed,
+    #[msg("Intent mismatch")]
+    IntentMismatch,
+    #[msg("Price below minimum")]
+    PriceBelowMinimum,
 }
