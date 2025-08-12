@@ -27,6 +27,7 @@ pub struct ClaimAuction<'info> {
     )]
     pub auction: Account<'info, AuctionAccount>,
 
+    /// CHECK: Bond vault PDA for holding lamports
     #[account(
         mut,
         seeds = [b"bond_vault"],
