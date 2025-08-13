@@ -49,4 +49,10 @@ pub enum ErrorCode {
     IntentMismatch,
     #[msg("Price below minimum")]
     PriceBelowMinimum,
+    #[msg("Auction not awarded")]
+    AuctionNotAwarded,
+    #[msg("Auction not solver")]
+    AuctionNotSolver,
+    #[msg("Time exceeded")]
+    TimeExceeded,
 }

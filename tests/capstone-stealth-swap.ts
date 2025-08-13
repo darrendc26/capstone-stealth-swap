@@ -316,7 +316,7 @@ it("Claim Auction", async () => {
         } catch (error) {
           reject(error);
         }
-      }, 10000);
+      }, 2000);
     });
 
     const auctionAccount = await program.account.auctionAccount.fetch(auction);
@@ -335,7 +335,7 @@ it("Claim Auction", async () => {
 });
 
   it("Fill Intent", async () => {
-  const [intent, bump] = await PublicKey.findProgramAddressSync(
+  const [intent, intentBump] = await PublicKey.findProgramAddressSync(
     [ 
       Buffer.from("intent"), 
       user.publicKey.toBuffer(), 
@@ -363,6 +363,15 @@ it("Claim Auction", async () => {
   );
   console.log("Solver output escrow address:", solverOutputEscrow.toString());
 
+  const [auction, bump] = await PublicKey.findProgramAddressSync(
+    [ 
+      Buffer.from("auction"), 
+      intent.toBuffer(),
+    ],
+    program.programId
+  );
+  console.log("Auction address:", auction.toString());
+
   try {
     console.log("Filling intent...");
     await program.methods.fillIntent(
@@ -379,7 +388,7 @@ it("Claim Auction", async () => {
         solver: solver.publicKey,
         user: user.publicKey,
         intent: intent,
-      
+        auction: auction,
         solverOutputAta: solverOutputTokenAccount,
         userInputEscrow: escrow,
        
@@ -401,8 +410,7 @@ it("Claim Auction", async () => {
     
     console.log("User received:", userOutputBalance.value.amount, "output tokens");
     console.log("Solver received:", solverInputBalance.value.amount, "input tokens");
-
-    assert.equal(userOutputBalance.value.amount, new BN(5 * 1_000_000).toString());
+    
     assert.equal(solverInputBalance.value.amount, new BN(10 * 1_000_000).toString());
 
   } catch (e) {

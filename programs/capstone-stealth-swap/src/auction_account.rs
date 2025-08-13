@@ -20,7 +20,7 @@ pub struct AuctionAccount {
 #[repr(u8)]
 pub enum AuctionStatus {
     Started = 0,
-    Ended   = 1,
+    Cancelled = 1,
     Awarded = 2,
-    Cancelled = 3,
+    Ended   = 3,
 }
