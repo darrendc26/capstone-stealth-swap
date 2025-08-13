@@ -38,8 +38,8 @@ pub fn create_auction_handler(ctx: Context<CreateAuction>) -> Result<()> {
     require!(intent.input_amount > 0, ErrorCode::InvalidInputAmount);
     
     auction.intent = intent.key();
-    auction.start_quote = intent.min_receive.checked_mul(110).and_then(|x| x.checked_div(100))
-                .ok_or(ErrorCode::MathOverflow)?; // 10% premium
+    auction.start_quote = intent.min_receive.checked_mul(110)
+            .and_then(|x| x.checked_div(100)).ok_or(ErrorCode::MathOverflow)?;    
     auction.min_quote = intent.min_receive;
     auction.start_time = now;
     auction.end_time = now + 120; // 2 minutes

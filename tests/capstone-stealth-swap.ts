@@ -11,6 +11,7 @@ import {
 } from "@solana/spl-token";
 import { PublicKey, Signer, SystemProgram } from "@solana/web3.js";
 import { assert } from "chai";
+import { set } from "@coral-xyz/anchor/dist/cjs/utils/features";
 
 describe("onchain", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
@@ -63,7 +64,7 @@ console.log("SOL airdrop successful!:", await connection.getBalance(solver.publi
       user,
       user.publicKey, 
       user.publicKey,  
-      9,              
+      6,              
       inputToken,   
       undefined,
       TOKEN_PROGRAM_ID
@@ -86,7 +87,7 @@ console.log("SOL airdrop successful!:", await connection.getBalance(solver.publi
       inputTokenMint,
       userTokenAccount,
       user.publicKey,  
-      1000000000,     
+      1000 * 1_000_000,
       [],
       undefined,
       TOKEN_PROGRAM_ID
@@ -98,7 +99,7 @@ console.log("SOL airdrop successful!:", await connection.getBalance(solver.publi
       user,
       user.publicKey, 
       user.publicKey, 
-      9,              
+      6,              
       outputToken,   
       undefined,
       TOKEN_PROGRAM_ID
@@ -133,7 +134,7 @@ console.log("SOL airdrop successful!:", await connection.getBalance(solver.publi
       outputTokenMint,
       solverOutputTokenAccount,
       user.publicKey,
-      1000,
+      1000 * 1_000_000,
       [],
       undefined,
       TOKEN_PROGRAM_ID
@@ -186,8 +187,8 @@ console.log("inputTokenMint:", inputTokenMint.toString());
         {
           inputToken: inputTokenMint,
           outputToken: outputToken.publicKey,
-          inputAmount: new BN(10),
-          minReceive: new BN(5),
+          inputAmount: new BN(10 * 1_000_000),
+          minReceive: new BN(5 * 1_000_000),
         },
         new BN(id)
       )
@@ -205,8 +206,8 @@ console.log("inputTokenMint:", inputTokenMint.toString());
       assert.equal(intentAccount.user.toString(), user.publicKey.toString());
       assert.equal(intentAccount.inputToken.toString(), inputTokenMint.toString());
       assert.equal(intentAccount.outputToken.toString(), outputToken.publicKey.toString());
-      assert.equal(intentAccount.inputAmount.toString(), new BN(10).toString());
-      assert.equal(intentAccount.minReceive.toString(), new BN(5).toString());
+      assert.equal(intentAccount.inputAmount.toString(), new BN(10 * 1_000_000).toString());
+      assert.equal(intentAccount.minReceive.toString(), new BN(5 * 1_000_000).toString());
       assert.equal(intentAccount.active, true);
       
     } catch (e) {
@@ -249,8 +250,8 @@ console.log("inputTokenMint:", inputTokenMint.toString());
       let now = Math.floor(Date.now() / 1000);
       let TOLERANCE = 2; // Using tolerance of 2 seconds to account for clock drift
       assert.equal(auctionAccount.intent.toString(), intent.toString());
-      assert.equal(auctionAccount.startQuote.toString(), new BN(5).toString());
-      assert.equal(auctionAccount.minQuote.toString(), new BN(5).toString());
+      assert.equal(auctionAccount.startQuote.toString(), new BN(5 * 1_100_000).toString());
+      assert.equal(auctionAccount.minQuote.toString(), new BN(5 * 1_000_000).toString());
       assert(
       Math.abs(auctionAccount.startTime.toNumber() - now) <= TOLERANCE,
       `startTime ${auctionAccount.startTime.toNumber()} not within ${TOLERANCE}s of ${now}`
@@ -270,6 +271,68 @@ console.log("inputTokenMint:", inputTokenMint.toString());
       throw e;
     } 
   }); 
+
+it("Claim Auction", async () => {
+  const [intent, _] = await PublicKey.findProgramAddressSync(
+    [ 
+      Buffer.from("intent"), 
+      user.publicKey.toBuffer(), 
+    ],
+    program.programId
+  );
+  console.log("Intent address:", intent.toString());
+
+  const [auction, bump] = await PublicKey.findProgramAddressSync(
+    [ 
+      Buffer.from("auction"), 
+      intent.toBuffer(),
+    ],
+    program.programId
+  );
+  console.log("Auction address:", auction.toString());
+
+  const [bondVault, bondBump] = await PublicKey.findProgramAddressSync(
+    [ 
+      Buffer.from("bond_vault"),
+    ],
+    program.programId
+  );
+  console.log("Bond vault address:", bondVault.toString());
+
+    try {
+    console.log("Claiming auction...");
+    
+    await new Promise<void>((resolve, reject) => {
+      setTimeout(async () => {
+        try {
+          await program.methods.claimAuction()
+            .accounts({
+              solver: solver.publicKey,
+              intent: intent,
+            })
+            .signers([solver])
+            .rpc();
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      }, 10000);
+    });
+
+    const auctionAccount = await program.account.auctionAccount.fetch(auction);
+    console.log("Auction claimed successfully:", auctionAccount);
+    console.log("Auction price:", auctionAccount.claimPrice.toNumber());
+    const price = 
+    assert.equal(auctionAccount.claimedBy.toString(), solver.publicKey.toString());
+    assert.equal(auctionAccount.claimPrice.toNumber() > auctionAccount.minQuote.toNumber(), true);
+    assert.equal(auctionAccount.claimPrice.toNumber() < auctionAccount.startQuote.toNumber(), true);
+    assert.equal(auctionAccount.status.awarded !== undefined, true);
+
+  } catch (e) {
+    console.error("Error claiming auction:", e);
+    throw e;
+  }
+});
 
   it("Fill Intent", async () => {
   const [intent, bump] = await PublicKey.findProgramAddressSync(
@@ -305,9 +368,9 @@ console.log("inputTokenMint:", inputTokenMint.toString());
     await program.methods.fillIntent(
       {
         id: new BN(id),
-        inputAmount: new BN(10),
-        minReceive: new BN(5),
-        receiveAmount: new BN(5),
+        inputAmount: new BN(10 * 1_000_000),
+        minReceive: new BN(5 * 1_000_000),
+        receiveAmount: new BN(5 * 1_000_000),
         inputToken: inputTokenMint,
         outputToken: outputTokenMint,
         user: user.publicKey,
@@ -339,8 +402,8 @@ console.log("inputTokenMint:", inputTokenMint.toString());
     console.log("User received:", userOutputBalance.value.amount, "output tokens");
     console.log("Solver received:", solverInputBalance.value.amount, "input tokens");
 
-    assert.equal(userOutputBalance.value.amount, "5");
-    assert.equal(solverInputBalance.value.amount, "10");
+    assert.equal(userOutputBalance.value.amount, new BN(5 * 1_000_000).toString());
+    assert.equal(solverInputBalance.value.amount, new BN(10 * 1_000_000).toString());
 
   } catch (e) {
     console.error("Error filling intent:", e);
@@ -348,3 +411,4 @@ console.log("inputTokenMint:", inputTokenMint.toString());
   }
 });
 });
+
