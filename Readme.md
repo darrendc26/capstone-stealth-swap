@@ -37,6 +37,10 @@ Testing: TypeScript with Mocha/Chai
 
 Token Standard: SPL Token Program
 
+## Deployment
+This project is deployed on Solana's devnet. 
+Signature: 2NuQeQ392wkKdvKaVWiVkxUkt6TvMTVmnkceaDMktb2RHwVgk2V57LxBvVGyeUKG9gVb7zh8ax5ffccFhHRZf7rX
+
 Prerequisites
 ```bash
 # Install Rust
